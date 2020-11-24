@@ -9,7 +9,7 @@ from flask_sqlalchemy import SQLAlchemy
 from marshmallow import fields
 from sqlalchemy import create_engine, Integer, String, MetaData, select, Table
 from sqlalchemy.ext.declarative import DeclarativeMeta
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, query
 
 app = Flask(__name__)
 api = Api(app)
@@ -110,7 +110,7 @@ def get_connection():
     :return:
     database connection and engine for postgresSQL
     """
-    engine = create_engine("postgresql+psycopg2://postgres:postgres@localhost:5432/postgres")
+    engine = create_engine("postgresql+psycopg2://postgres:postgres@localhost:5432/postgres", echo=True)
     connection = engine.connect()
     return connection, engine
 
@@ -126,6 +126,27 @@ def get_person():
     session = Session()
 
     res = session.query(Person, Work).join(Work).all()
+    no_of_rows = len(res)
+    logging.info('Number of rows in the result is ' + str(no_of_rows))
+    json_object = json.dumps(res, cls=AlchemyEncoder)
+    return json_object
+
+
+@app.route('/getperson/<id>', methods=['GET'])
+def get_person_by_id(id):
+    """
+    this REST resource fetches data for all people from person and work tables
+    by performing join on both of the tables
+    """
+    logging.info('Requested ID is ' + id)
+    connection, engine = get_connection()
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    # res = session.query(Person, Work).join(Work).all()
+    res = session.query(Person, Work).join(Work).filter(Work.org_location == id).all()
+    # res = session.query(Person).filter(location=id).all
+    logging.info(res)
     no_of_rows = len(res)
     logging.info('Number of rows in the result is ' + str(no_of_rows))
     json_object = json.dumps(res, cls=AlchemyEncoder)
